@@ -1,0 +1,29 @@
+# 环境与密钥（绝不提交）
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+
+# 虚拟环境
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+
+# 日志与临时文件
+*.log
+logs/
+Thumbs.db
+.DS_Store
+
+# 输出目录（绘图生成物，不入库）
+06_Writing/figures/svg/
+06_Writing/figures/pdf/
+06_Writing/figures/png/
