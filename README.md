@@ -8,11 +8,11 @@
 
 ## 一、研究概述
 
-当决策主体从人类变为大语言模型（LLM）Agent时，运营管理的经典偏差模式发生了结构性变化。本研究以**报童问题**为标准化实验平台，以 **DeepSeek V4 Flash** 为代表性LLM Agent，通过 **8个实验（535条API调用记录）** 系统考察了LLM Agent在运营决策中的偏差特征与纠偏机制：
+当决策主体从人类变为大语言模型（LLM）Agent时，运营管理的经典偏差模式发生了**方向性变化**。本研究以**报童问题**为标准化实验平台，以 **DeepSeek V4 Flash**（模型ID：deepseek-chat，API端点 https://api.deepseek.com，温度 T=0.7，2026-08-10 API 快照）为代表性LLM Agent，通过 **8个实验（535条API调用记录）** 系统考察了LLM Agent在运营决策中的偏差特征与纠偏机制：
 
-1. **偏差识别（E1-E5）**：锚定效应、幻觉偏差、指令敏感性、过度自信四种偏差的强度排序；
-2. **难度-校准反转（E5）**：LLM Agent的90%置信区间"自洽但不命中"——对真实最优解的覆盖率在简单/中等/困难任务中分别为6.7%/30.0%/33.3%，自覆盖率均为100%，校准误差随难度递减（83.3%→56.7%），与人类Hard-Easy Effect方向相反；
-3. **纠偏机制比较（E6-E8）**：CoT推理（偏差改善+6.8pp）、多智能体辩论（+5.9pp）、人类反馈校准（强反馈+6.0pp、轻反馈+1.6pp）。
+1. **偏差识别（E1-E5）**：锚定效应、虚假信息误导、指令敏感性、过度自信四种偏差的强度排序；
+2. **难度-校准反转（E5）**：LLM Agent的90%置信区间"自洽但不命中"——对真实最优解的覆盖率在简单/中等/困难任务中分别为6.7%/30.0%/33.3%，自覆盖率均为100%；双零模型蒙特卡洛检验表明该覆盖率的难度梯度完全可由几何机制（点估计方差+宽度缩放）解释；真正与人类方向相反的反转内核是**区间宽度随难度扩张**（w/σ 0.41→0.79，人类困难任务收缩区间）；
+3. **纠偏机制比较（E6-E8，统一基线E2高锚定-6.7%）**：CoT推理（+6.7pp）、脚本化外部反馈-强（+5.3pp）、多智能体辩论（+5.2pp）、脚本化外部反馈-轻（+0.8pp）。
 
 理论贡献：提出"算法有限理性"（Algorithmic Bounded Rationality）概念，将LLM Agent因算法架构、训练数据和推理机制本质特征而产生的系统性决策偏差理论化，并界定其与Simon有限理性的边界。
 
@@ -31,7 +31,11 @@ algorithmic_bounded_rationality/
 │   ├── raw/                   # 8个实验的原始API调用记录（JSONL，共535条）
 │   └── results/               # 汇总统计与中间分析结果（CSV/JSON）
 ├── 05_Analysis/
-│   └── statistical_tests.py   # 统计检验（t检验/ANOVA/Kruskal-Wallis/二项检验）
+│   ├── statistical_tests.py   # 统计检验（t检验/ANOVA/Kruskal-Wallis/二项检验）
+│   ├── m1_null_model_dcr.py   # 难度-校准反转零模型蒙特卡洛检验（固定有偏中心）
+│   ├── m1_null_model_v2.py    # 零模型V2（观测点估计分布重采样中心）
+│   ├── m2_analysis.py         # 宽度-难度推断检验 + 纠偏统一基线
+│   └── m3_heuristic_test.py   # "均值+0.3σ"启发式回归拟合检验
 └── 06_Writing/figures_scripts/  # 论文图表绘制脚本
 ```
 
@@ -64,7 +68,13 @@ python run_all.py --exp E5 --n 10
 # 3. 统计检验（单样本t检验、ANOVA、Kruskal-Wallis、覆盖率二项检验）
 python 05_Analysis/statistical_tests.py --all
 
-# 4. 论文图表（需Windows中文字体 SimHei/SimSun）
+# 4. 稳健性检验（零模型/推断检验）
+python 05_Analysis/m1_null_model_dcr.py
+python 05_Analysis/m1_null_model_v2.py
+python 05_Analysis/m2_analysis.py
+python 05_Analysis/m3_heuristic_test.py
+
+# 5. 论文图表（需Windows中文字体 SimHei/SimSun）
 python 06_Writing/figures_scripts/plot_all_figures.py
 python 06_Writing/figures_scripts/plot_fig6_calibration_v4.py
 python 06_Writing/figures_scripts/plot_fig7_debiasing_v4.py
@@ -78,12 +88,12 @@ python 06_Writing/figures_scripts/plot_fig7_debiasing_v4.py
 |------|------|--------|------|----------|
 | E1 | 基准测试 | 1 | 30 | 122 |
 | E2 | 锚定效应（低/高/随机锚定） | 3 | 90 | 122 |
-| E3 | 幻觉偏差（供应链/政策/竞争虚假信息） | 3 | 90 | 122 |
+| E3 | 虚假信息误导（供应链/政策/竞争虚假信息） | 3 | 90 | 122 |
 | E4 | 指令敏感性（正式/口语化/角色/警告/英文） | 5 | 150 | 122 |
 | E5 | 过度自信与置信度校准（σ=10/30/60） | 3 | 90 | 107/122/144 |
 | E6 | CoT推理纠偏 | 1 | 30 | 122 |
 | E7 | 多智能体辩论纠偏 | 1 | 15 | 122 |
-| E8 | 人类反馈校准（轻/强反馈） | 2 | 40 | 122 |
+| E8 | 脚本化外部反馈（轻/强反馈，脚本生成非真实人类评审） | 2 | 40 | 122 |
 
 实验参数：报童问题 c=5、p=15、v=2、D~N(100,30)，温度 T=0.7；每次调用均为独立会话。
 
@@ -96,9 +106,10 @@ python 06_Writing/figures_scripts/plot_fig7_debiasing_v4.py
 ## 七、关键结果（与论文一致）
 
 - 低锚定导致最严重决策扭曲：偏差 **-42.2%**（d=-4.37），锚定效应呈显著不对称性；
-- LLM Agent采用近似"均值+0.3σ"启发式（z≈0.32，理论最优z≈0.735），偏差随难度单调放大：**-3.5% / -8.8% / -17.4%**；
-- 90%置信区间对真实最优解覆盖率：**6.7% / 30.0% / 33.3%**（自覆盖率均为100%），校准误差随难度递减（83.3%→56.7%）；
-- CoT推理为最优纠偏策略（偏差从-6.7%恢复至+0.1%，6.8pp/调用）。
+- LLM Agent采用近似"均值+0.3σ"启发式：回归拟合 Q̂=100.87+0.310σ（n=90，斜率95%CI[0.236,0.383]，显著低于理论最优0.735、与0.3无显著差异），偏差随难度单调放大：**-3.5% / -8.8% / -17.4%**；
+- 90%置信区间对真实最优解覆盖率：**6.7% / 30.0% / 33.3%**（自覆盖率均为100%）；双零模型（固定有偏中心 / 观测点估计分布重采样）表明覆盖率难度梯度完全由几何机制解释（零模型Ⅱ p=0.907/0.286/0.844），校准误差随难度递减属几何投影而非结构性机制；
+- 宽度-难度关系推断检验：Kruskal-Wallis H(2)=77.70（p<0.001），Spearman ρ=0.934（p<0.001），w/σ 0.41→0.79（与人类困难任务收缩区间方向相反，属跨任务对照假设）；
+- 纠偏机制（统一基线E2高锚定-6.7%）：CoT推理 **+6.7pp**（6.7pp/调用）> 脚本化外部反馈-强 **+5.3pp**（2.6pp/调用）> 多智能体辩论 **+5.2pp**（1.7pp/调用）> 脚本化外部反馈-轻 **+0.8pp**（0.4pp/调用）。
 
 ## 八、引用
 
@@ -121,4 +132,4 @@ MIT License（见 LICENSE 文件）。实验数据遵循与代码相同的许可
 
 ## English Summary
 
-This repository provides the experiment code and data for the study *"Algorithmic Bounded Rationality of LLM Agents: Identifying and Correcting Decision Biases in Operations Management"* (submitted to ICMSE 2026, Session 3: Intelligent Decision-Making and Operations Management). Using the newsvendor problem as a standardized testbed and DeepSeek V4 Flash as a representative LLM agent, the study runs 8 experiments (535 API call records) to identify four decision biases (anchoring, hallucination, instruction sensitivity, and overconfidence), reveals a "difficulty–calibration reversal" pattern (90% CI coverage of the true optimum: 6.7%/30.0%/33.3%; self-coverage 100%), and compares three debiasing mechanisms (CoT reasoning, multi-agent debate, and human feedback). See README (Chinese) for reproduction steps.
+This repository provides the experiment code and data for the study *"Algorithmic Bounded Rationality of LLM Agents: Identifying and Correcting Decision Biases in Operations Management"* (submitted to ICMSE 2026, Session 3: Intelligent Decision-Making and Operations Management). Using the newsvendor problem as a standardized testbed and DeepSeek V4 Flash (deepseek-chat, temperature 0.7, API snapshot 2026-08-10) as a representative LLM agent, the study runs 8 experiments (535 API call records) to identify four decision biases (anchoring, misinformation susceptibility, instruction sensitivity, and overconfidence), reveals a "difficulty–calibration reversal" pattern (90% CI coverage of the true optimum: 6.7%/30.0%/33.3%; self-coverage 100%; the coverage gradient is fully mechanical per dual zero-model tests; the robust reversal lies in width–difficulty scaling, w/σ 0.41→0.79, as a cross-task comparison hypothesis), and compares three debiasing mechanisms under a unified baseline (CoT: +6.7pp; scripted external feedback-strong: +5.3pp; multi-agent debate: +5.2pp; scripted external feedback-light: +0.8pp). See README (Chinese) for reproduction steps.
